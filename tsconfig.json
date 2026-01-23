@@ -8,6 +8,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "declaration": true,
+    "types": ["frida-gum"],
     "outDir": "./dist"
   },
   "include": [
