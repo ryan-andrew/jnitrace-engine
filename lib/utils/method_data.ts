@@ -80,6 +80,15 @@ class MethodData {
     public get ret (): NativeFunctionReturnValue {
         return this._ret;
     }
+
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    public get retString (): string {
+        const ret = this._ret;
+        if (ret === undefined) {
+            throw new Error("Return value is undefined");
+        }
+        return ret.toString();
+    }
 }
 
 export { MethodData };
