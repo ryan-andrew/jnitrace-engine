@@ -5,6 +5,8 @@ import { JNICallbackManager } from "./internal/jni_callback_manager";
 
 import { JNIMethod } from "./jni/jni_method";
 import { JavaMethod } from "./utils/java_method";
+import { MethodData } from "./utils/method_data";
+import { Types } from "./utils/types";
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 import JNI_ENV_METHODS from "./data/jni_env.json";
@@ -220,5 +222,7 @@ export {
     Config,
     ConfigBuilder,
     JNIMethod,
-    JavaMethod
+    JavaMethod,
+    MethodData,
+    Types
 };
