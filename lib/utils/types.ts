@@ -14,7 +14,7 @@ const Types = {
 
         return JOBJECT.includes(type);
     },
-    sizeOf (type: NativeFunctionArgumentType): number {
+    sizeOf (type: NativeFunctionArgumentType | NativeFunctionReturnType): number {
         if (type === "double" || type === "float" || type === "int64") {
             return TYPE_SIZE_64_BIT;
         } else if (type === "char") {
@@ -92,11 +92,7 @@ const Types = {
             return arg.handle.toString();
         }
 
-        if (arg instanceof NativePointer || arg instanceof Int64 || arg instanceof UInt64) {
-            return arg.toString();
-        }
-
-        if (typeof arg !== 'object') {
+        if (arg instanceof NativePointer || arg instanceof Int64 || arg instanceof UInt64 || typeof arg !== 'object') {
             return String(arg);
         }
 
