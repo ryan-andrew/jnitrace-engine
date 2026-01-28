@@ -1,8 +1,9 @@
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import JNI_ENV_METHODS from "../data/jni_env.json";
-import { JNIMethod } from "./jni_method";
+import type { JNIMethod } from "./jni_method";
 
 class JNIEnv {
-    private static instance: JNIEnv;
+    private static instance: JNIEnv | null;
 
     private readonly _methods: JNIMethod[];
 
@@ -15,10 +16,7 @@ class JNIEnv {
     }
 
     public static getInstance (): JNIEnv {
-        if (JNIEnv.instance !== undefined) {
-            JNIEnv.instance = new JNIEnv();
-        }
-        return JNIEnv.instance;
+        return JNIEnv.instance ??= new JNIEnv();
     }
 }
 

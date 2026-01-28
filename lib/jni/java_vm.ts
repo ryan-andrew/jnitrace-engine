@@ -1,8 +1,9 @@
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import JAVA_VM_METHODS from "../data/java_vm.json";
-import { JNIMethod } from "./jni_method";
+import type { JNIMethod } from "./jni_method";
 
 class JavaVM {
-    private static instance: JavaVM;
+    private static instance: JavaVM | null;
 
     private readonly _methods: JNIMethod[];
 
@@ -15,10 +16,7 @@ class JavaVM {
     }
 
     public static getInstance (): JavaVM {
-        if (JavaVM.instance === undefined) {
-            JavaVM.instance = new JavaVM();
-        }
-        return JavaVM.instance;
+        return JavaVM.instance ??= new JavaVM();
     }
 }
 
