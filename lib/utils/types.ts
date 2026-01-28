@@ -14,78 +14,22 @@ const Types = {
 
         return JOBJECT.includes(type);
     },
-    sizeOf (type: NativeFunctionArgumentType | NativeFunctionReturnType): number {
-        if (type === "double" || type === "float" || type === "int64") {
-            return TYPE_SIZE_64_BIT;
-        } else if (type === "char") {
-            return TYPE_SIZE_CHAR;
-        } else {
-            return Process.pointerSize;
+    sizeOf (type: NativeFunctionArgumentType | NativeFunctionReturnType | string): number {
+        switch (type) {
+            case "double":
+            case "float":
+            case "int64":
+            case "jdouble":
+            case "jfloat":
+            case "jlong":
+                return TYPE_SIZE_64_BIT;
+            case "char":
+            case "jboolean":
+            case "jbyte":
+                return TYPE_SIZE_CHAR;
+            default:
+                return Process.pointerSize;
         }
-    },
-    convertNativeJTypeToFridaType (jtype: string): string {
-        if (jtype.endsWith("*")) {
-            return "pointer";
-        }
-        if (jtype === "va_list") {
-            return "pointer";
-        }
-        if (jtype === "jmethodID") {
-            return "pointer";
-        }
-        if (jtype === "jfieldID") {
-            return "pointer";
-        }
-        if (jtype === "jweak") {
-            jtype = "jobject";
-        }
-        if (jtype === "jthrowable") {
-            jtype = "jobject";
-        }
-        if (jtype.includes("Array")) {
-            jtype = "jarray";
-        }
-        if (jtype === "jarray") {
-            jtype = "jobject";
-        }
-        if (jtype === "jstring") {
-            jtype = "jobject";
-        }
-        if (jtype === "jclass") {
-            jtype = "jobject";
-        }
-        if (jtype === "jobject") {
-            return "pointer";
-        }
-        if (jtype === "jsize") {
-            jtype = "jint";
-        }
-        if (jtype === "jdouble") {
-            return "double";
-        }
-        if (jtype === "jfloat") {
-            return "float";
-        }
-        if (jtype === "jchar") {
-            return "uint16";
-        }
-        if (jtype === "jboolean") {
-            return "char";
-        }
-        if (jtype === "jlong") {
-            return "int64";
-        }
-        if (jtype === "jint") {
-            return "int";
-        }
-        if (jtype === "jshort") {
-            return "int16";
-        }
-        if (jtype === "jbyte") {
-            return "char";
-        }
-
-        return jtype;
     },
     convertNativeFunctionArgumentValueToString(arg: Exclude<NativeFunctionArgumentValue, undefined>): string {
         if (typeof arg === 'object' && 'handle' in arg) {
