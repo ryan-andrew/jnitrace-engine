@@ -87,6 +87,21 @@ const Types = {
 
         return jtype;
     },
+    convertNativeFunctionArgumentValueToString(arg: Exclude<NativeFunctionArgumentValue, undefined>): string {
+        if (typeof arg === 'object' && 'handle' in arg) {
+            return arg.handle.toString();
+        }
+
+        if (arg instanceof NativePointer || arg instanceof Int64 || arg instanceof UInt64) {
+            return arg.toString();
+        }
+
+        if (typeof arg !== 'object') {
+            return String(arg);
+        }
+
+        throw new Error(`Unhandled native type: ${typeof arg}`);
+    },
     convertNativeJTypeToFridaNativeFunctionArgumentType(jtype: string): NativeFunctionArgumentType {
       if (jtype.endsWith("*")) return "pointer";
       if (jtype.includes("Array")) return "pointer";

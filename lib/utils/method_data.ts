@@ -1,5 +1,6 @@
 import type { JNIMethod } from "../jni/jni_method";
 import type { JavaMethod } from "./java_method";
+import {Types} from "./types";
 
 class MethodData {
     private readonly _method: JNIMethod;
@@ -40,6 +41,16 @@ class MethodData {
 
     public get args (): NativeFunctionArgumentValue[] {
         return this._args;
+    }
+
+    public getArgAsString(i: number): string {
+        const arg = this._args[i];
+
+        if (arg === undefined) {
+            throw new Error(`Argument at index ${i} is undefined`);
+        }
+
+        return Types.convertNativeFunctionArgumentValueToString(arg);
     }
 
     public getArgAsPtr (i: number): NativePointer {
