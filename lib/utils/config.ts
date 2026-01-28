@@ -18,6 +18,7 @@ class Config {
 
     private readonly _vm: boolean;
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private _hostInitialised: boolean;
 
     private constructor (builder: ConfigBuilder) {
@@ -98,9 +99,7 @@ class Config {
         if (builder !== undefined) {
             Config.instance = new Config(builder);
             Config.instance._hostInitialised = true;
-        } else if (Config.instance === undefined) {
-            Config.instance = new Config(new ConfigBuilder());
-        }
+        } else Config.instance ??= new Config(new ConfigBuilder());
         return Config.instance;
     }
 }

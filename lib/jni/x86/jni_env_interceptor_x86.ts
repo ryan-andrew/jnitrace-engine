@@ -1,10 +1,10 @@
 import { JNIEnvInterceptor } from "../jni_env_interceptor";
-import { JNIThreadManager } from "../jni_thread_manager";
+import type { JNIThreadManager } from "../jni_thread_manager";
 
-import { ReferenceManager } from "../../utils/reference_manager";
+import type { ReferenceManager } from "../../utils/reference_manager";
 import { Types } from "../../utils/types";
-import { JavaMethod } from "../../utils/java_method";
-import { JNICallbackManager } from "../../internal/jni_callback_manager";
+import type { JavaMethod } from "../../utils/java_method";
+import type { JNICallbackManager } from "../../internal/jni_callback_manager";
 
 class JNIEnvInterceptorX86 extends JNIEnvInterceptor {
     private vaList: NativePointer;
@@ -22,10 +22,11 @@ class JNIEnvInterceptorX86 extends JNIEnvInterceptor {
         this.vaListOffset = 0;
     }
 
+    // eslint-disable-next-line @typescript-eslint/class-methods-use-this
     protected buildVaArgParserShellcode (
         text: NativePointer,
         _: NativePointer,
-        parser: NativeCallback
+        parser: NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]>
     ): void {
         const DATA_OFFSET = 0x400;
         text.add(DATA_OFFSET).writePointer(parser);
@@ -58,7 +59,7 @@ class JNIEnvInterceptorX86 extends JNIEnvInterceptor {
         method: JavaMethod,
         paramId: number
     ): NativePointer {
-        let currentPtr = this.vaList.add(this.vaListOffset);
+        const currentPtr = this.vaList.add(this.vaListOffset);
         this.vaListOffset += Types.sizeOf(method.fridaParams[paramId]);
         return currentPtr;
     }

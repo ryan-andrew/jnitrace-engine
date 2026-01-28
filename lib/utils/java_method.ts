@@ -6,6 +6,7 @@ const SEMI_COLON_OFFSET = 1;
  * Abstracts a Java method referenced in native code.
  */
 class JavaMethod {
+    // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private readonly _: string;
 
     private readonly _params: string[];
@@ -20,7 +21,7 @@ class JavaMethod {
         const jParamTypes: string[] = [];
         let jRetType = "unknown";
 
-        for (var i = 0; i < signature.length; i++) {
+        for (let i = 0; i < signature.length; i++) {
             if (signature.charAt(i) === "(") {
                 continue;
             }
@@ -40,7 +41,7 @@ class JavaMethod {
             if (primitiveTypes.includes(signature.charAt(i))) {
                 jtype = signature.charAt(i);
             } else if (signature.charAt(i) === "L") {
-                var end = signature.indexOf(";", i) + SEMI_COLON_OFFSET;
+                const end = signature.indexOf(";", i) + SEMI_COLON_OFFSET;
                 jtype = signature.substring(i, end);
                 i = end - SEMI_COLON_OFFSET;
             }
@@ -87,11 +88,11 @@ class JavaMethod {
     /**
      * Get the Java params as Frida native types.
      */
-    public get fridaParams (): string[] {
-        const fridaParams: string[] = [];
+    public get fridaParams (): NativeFunctionArgumentType[] {
+        const fridaParams: NativeFunctionArgumentType[] = [];
         this._params.forEach((p: string): void => {
             const nativeJType = Types.convertJTypeToNativeJType(p);
-            const fridaType = Types.convertNativeJTypeToFridaType(nativeJType);
+            const fridaType = Types.convertNativeJTypeToFridaNativeFunctionArgumentType(nativeJType);
 
             fridaParams.push(fridaType);
         });
@@ -108,9 +109,9 @@ class JavaMethod {
     /**
      * Get the Java return type as a Frida native type.
      */
-    public get fridaRet (): string {
+    public get fridaRet (): NativeFunctionReturnType {
         const jTypeRet = Types.convertJTypeToNativeJType(this._ret);
-        return Types.convertNativeJTypeToFridaType(jTypeRet);
+        return Types.convertNativeJTypeToFridaNativeFunctionReturnType(jTypeRet);
     }
 }
 

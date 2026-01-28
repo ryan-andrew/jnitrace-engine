@@ -6,12 +6,11 @@ import { JNICallbackManager } from "./internal/jni_callback_manager";
 import { JNIMethod } from "./jni/jni_method";
 import { JavaMethod } from "./utils/java_method";
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import JNI_ENV_METHODS from "./data/jni_env.json";
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import JAVA_VM_METHODS from "./data/java_vm.json";
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-import engine = require("./engine");
-/* eslint-enable @typescript-eslint/no-require-imports */
+import * as engine from "./engine";
 const globalCallbackManager: JNICallbackManager = new JNICallbackManager();
 
 /**
@@ -22,7 +21,7 @@ interface JNIInvocationCallback {
      * Called whenever a JNI API call is about to run. Arguments to that JNI API
      * call can be modified by replacing values in the `args` array.
      */
-    onEnter?: (this: JNIInvocationContext, args: NativeArgumentValue[]) => void;
+    onEnter?: (this: JNIInvocationContext, args: NativeFunctionArgumentValue[]) => void;
 
     /**
      * Called immediately after a JNI API has run. The return value from that
@@ -83,16 +82,16 @@ interface JNIInvocationContext {
  * Wrapper class for return values from a traced JNI API call.
  */
 class JNINativeReturnValue {
-    private value: NativeReturnValue;
+    private value: NativeFunctionReturnValue;
 
-    public constructor (value: NativeReturnValue) {
+    public constructor (value: NativeFunctionReturnValue) {
         this.value = value;
     }
     
     /**
      * Get the return value of the JNI call.
      */
-    public get (): NativeReturnValue {
+    public get (): NativeFunctionReturnValue {
         return this.value;
     }
     
@@ -102,7 +101,7 @@ class JNINativeReturnValue {
      * 
      * @param value - the new value that should be returned
      */
-    public replace (value: NativeReturnValue): void {
+    public replace (value: NativeFunctionReturnValue): void {
         this.value = value;
     }
 }
@@ -141,6 +140,7 @@ class JNIInvocationListener {
  * Interceptor.
  */
 namespace JNIInterceptor {
+    // eslint-disable-next-line prefer-const
     let callbackManager = globalCallbackManager;
 
     /**
@@ -207,13 +207,16 @@ namespace JNILibraryWatcher {
 
 engine.run(globalCallbackManager);
 
+export type {
+    JNIInvocationCallback,
+    JNIInvocationContext
+};
+
 export {
     JNIInterceptor,
     JNILibraryWatcher,
     JNINativeReturnValue,
-    JNIInvocationCallback,
     JNIInvocationListener,
-    JNIInvocationContext,
     Config,
     ConfigBuilder,
     JNIMethod,

@@ -1,10 +1,10 @@
 class JNIThreadManager {
     private shadowJavaVM: NativePointer;
 
-    private readonly threads: { [id: number]: NativePointer };
+    private readonly threads: Map<number, NativePointer>;
 
     public constructor () {
-        this.threads = {};
+        this.threads = new Map<number, NativePointer>();
         this.shadowJavaVM = NULL;
     }
     
@@ -21,8 +21,9 @@ class JNIThreadManager {
     }
 
     public getJNIEnv (threadId: number): NativePointer {
-        if (this.threads[threadId] !== undefined) {
-            return this.threads[threadId];
+        const jniEnv = this.threads.get(threadId);
+        if (jniEnv !== undefined) {
+            return jniEnv;
         } else {
             return NULL;
         }
@@ -33,23 +34,11 @@ class JNIThreadManager {
     }
 
     public setJNIEnv (threadId: number, jniEnv: NativePointer): void {
-        this.createEntry(threadId, jniEnv);
+        this.threads.set(threadId, jniEnv);
     }
 
     public needsJNIEnvUpdate (threadId: number, jniEnv: NativePointer): boolean {
-        const entry = this.getEntry(threadId);
-        if (entry === undefined || !entry.equals(jniEnv)) {
-            return true;
-        }
-        return false;
-    }
-
-    private createEntry (threadId: number, jniEnv: NativePointer): void {
-        this.threads[threadId] = jniEnv;
-    }
-
-    private getEntry (threadId: number): NativePointer {
-        return this.threads[threadId];
+        return this.threads.get(threadId)?.equals(jniEnv) !== true;
     }
 }
 

@@ -1,9 +1,9 @@
 import { JNIEnvInterceptor } from "../jni_env_interceptor";
-import { JNIThreadManager } from "../jni_thread_manager";
+import type { JNIThreadManager } from "../jni_thread_manager";
 
-import { ReferenceManager } from "../../utils/reference_manager";
-import { JavaMethod } from "../../utils/java_method";
-import { JNICallbackManager } from "../../internal/jni_callback_manager";
+import type { ReferenceManager } from "../../utils/reference_manager";
+import type { JavaMethod } from "../../utils/java_method";
+import type { JNICallbackManager } from "../../internal/jni_callback_manager";
 
 class JNIEnvInterceptorX64 extends JNIEnvInterceptor {
     private grOffset: number;
@@ -33,11 +33,23 @@ class JNIEnvInterceptorX64 extends JNIEnvInterceptor {
         this.dataPtr = NULL;
     }
 
+    // eslint-disable-next-line @typescript-eslint/class-methods-use-this
     protected buildVaArgParserShellcode (
         text: NativePointer,
         data: NativePointer,
-        parser: NativeCallback
+        parser: NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]>
     ): void {
+        const x86Regs: X86Register[] = [
+            "xax", "xcx", "xdx", "xbx", "xsp", "xbp", "xsi", "xdi",
+            "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
+            "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+            "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+            "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d",
+            "xip", "eip", "rip"
+        ];
+        const x86RegSet = new Set<string>(x86Regs);
+        const isX86Register = (reg: string): reg is X86Register => x86RegSet.has(reg);
+
         Memory.patchCode(text, Process.pageSize, (code: NativePointer): void => {
             const cw = new X86Writer(code, { pc: text });
             const XMM_INC_VALUE = 8;
@@ -63,17 +75,16 @@ class JNIEnvInterceptorX64 extends JNIEnvInterceptor {
                 dataOffset += Process.pointerSize;
 
                 if (i < regs.length - SKIP_FIRST_REG) {
-                    if (regs[i + SKIP_FIRST_REG].includes("xmm")) {
+                    const nextReg = regs[i + SKIP_FIRST_REG];
+                    if (nextReg.includes("xmm")) {
                         cw.putU8(XMM_MOV_INS_1);
                         cw.putU8(XMM_MOV_INS_2);
                         cw.putU8(XMM_MOV_INS_3);
                         cw.putU8(XMM_MOV_TO_INS_4);
                         cw.putU8(XMM_MOV_INS_5 + xmmOffset * XMM_INC_VALUE);
                         xmmOffset++;
-                    } else {
-                        cw.putMovRegReg(
-                            "rdi", regs[i + SKIP_FIRST_REG] as X86Register
-                        );
+                    } else if (isX86Register(nextReg)) {
+                        cw.putMovRegReg("rdi", nextReg);
                     }
                 }
             }
@@ -104,15 +115,16 @@ class JNIEnvInterceptorX64 extends JNIEnvInterceptor {
                 cw.putMovRegNearPtr("rdi", data.add(regRestoreOffset));
 
                 if (i > SKIP_FIRST_COPY) {
-                    if (regs[i].includes("xmm")) {
+                    const currentReg = regs[i];
+                    if (currentReg.includes("xmm")) {
                         cw.putU8(XMM_MOV_INS_1);
                         cw.putU8(XMM_MOV_INS_2);
                         cw.putU8(XMM_MOV_INS_3);
                         cw.putU8(XMM_MOV_FROM_INS_4);
                         cw.putU8(XMM_MOV_INS_5 + xmmOffset * XMM_INC_VALUE);
                         xmmOffset--;
-                    } else {
-                        cw.putMovRegReg(regs[i] as X86Register, "rdi");
+                    } else if (isX86Register(currentReg)) {
+                        cw.putMovRegReg(currentReg, "rdi");
                     }
                 }
             }

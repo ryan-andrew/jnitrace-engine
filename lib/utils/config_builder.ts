@@ -35,6 +35,7 @@ class ConfigBuilder {
     /**
      * Get the list of libraries that the jnitrace engine should be tracing.
      */
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get libraries (): string[] {
         return this._libraries;
     }
@@ -55,6 +56,7 @@ class ConfigBuilder {
     /**
      * Get the Frida backtrace method that the jnitrace engine should use.
      */
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get backtrace (): string {
         return this._backtrace;
     }
@@ -69,6 +71,7 @@ class ConfigBuilder {
     /**
      * Get the list of exports that the jnitrace engine should trace.
      */
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get includeExports (): string[] {
         return this._includeExports;
     }
@@ -83,6 +86,7 @@ class ConfigBuilder {
     /**
      * Get the list of exports that the jnitrace engine should not tracqe.
      */
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get excludeExports (): string[] {
         return this._excludeExports;
     }
@@ -99,6 +103,7 @@ class ConfigBuilder {
      * Get whether the jnitrace engine should or should not trace JNIEnv struct
      * method calls.
      */
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get env (): boolean {
         return this._env;
     }
@@ -115,6 +120,7 @@ class ConfigBuilder {
      * Get whether the jnitrace engine should or should not trace JavaVM struct
      * method calls.
      */
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get vm (): boolean {
         return this._vm;
     }

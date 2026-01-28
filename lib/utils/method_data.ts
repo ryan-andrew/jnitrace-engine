@@ -1,22 +1,22 @@
-import { JNIMethod } from "../jni/jni_method";
-
-import { JavaMethod } from "./java_method";
+import type { JNIMethod } from "../jni/jni_method";
+import type { JavaMethod } from "./java_method";
 
 class MethodData {
     private readonly _method: JNIMethod;
 
     private readonly _jmethod: JavaMethod | undefined;
 
-    private readonly _args: NativeArgumentValue[];
+    private readonly _args: NativeFunctionArgumentValue[];
 
     private readonly _jparams: string[];
 
-    private readonly _ret: NativeReturnValue;
+    private readonly _ret: NativeFunctionReturnValue;
 
+    // eslint-disable-next-line @typescript-eslint/max-params
     public constructor (
         method: JNIMethod,
-        args: NativeArgumentValue[],
-        ret: NativeReturnValue,
+        args: NativeFunctionArgumentValue[],
+        ret: NativeFunctionReturnValue,
         jmethod?: JavaMethod
     ) {
         this._method = method;
@@ -38,23 +38,35 @@ class MethodData {
         return this._jmethod;
     }
 
-    public get args (): NativeArgumentValue[] {
+    public get args (): NativeFunctionArgumentValue[] {
         return this._args;
     }
 
     public getArgAsPtr (i: number): NativePointer {
-        return this._args[i] as NativePointer;
+        const arg = this._args[i];
+        if (arg instanceof NativePointer) {
+            return arg;
+        } else {
+            throw new Error(`Expected arg ${i} to be a NativePointer, got: ${typeof arg}`);
+        }
     }
 
     public getArgAsNum (i: number): number {
-        return this._args[i] as number;
+        const arg = this._args[i];
+        if (typeof arg === 'number') {
+            return arg;
+        } else {
+            throw new Error(`Expected arg ${i} to be a number, got: ${typeof arg}`);
+        }
     }
 
+    // eslint-disable-next-line @typescript-eslint/member-ordering
     public get jParams (): string[] {
         return this._jparams;
     }
 
-    public get ret (): NativeReturnValue {
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    public get ret (): NativeFunctionReturnValue {
         return this._ret;
     }
 }

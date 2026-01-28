@@ -2,7 +2,9 @@ const ARRAY_TYPE_INDEX = 1;
 const TYPE_SIZE_64_BIT = 8;
 const TYPE_SIZE_CHAR = 1;
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const Types = {
+
     isComplexObjectType (type: string): boolean {
         const JOBJECT = [
             "jobject",
@@ -12,7 +14,7 @@ const Types = {
 
         return JOBJECT.includes(type);
     },
-    sizeOf (type: string): number {
+    sizeOf (type: NativeFunctionArgumentType): number {
         if (type === "double" || type === "float" || type === "int64") {
             return TYPE_SIZE_64_BIT;
         } else if (type === "char") {
@@ -33,9 +35,6 @@ const Types = {
         }
         if (jtype === "jfieldID") {
             return "pointer";
-        }
-        if (jtype === "va_list") {
-            return "va_list";
         }
         if (jtype === "jweak") {
             jtype = "jobject";
@@ -87,6 +86,164 @@ const Types = {
         }
 
         return jtype;
+    },
+    convertNativeJTypeToFridaNativeFunctionArgumentType(jtype: string): NativeFunctionArgumentType {
+      if (jtype.endsWith("*")) return "pointer";
+      if (jtype.includes("Array")) return "pointer";
+
+      switch (jtype) {
+        case "va_list":
+        case "jmethodID":
+        case "jfieldID":
+        case "jweak":
+        case "jthrowable":
+        case "jarray":
+        case "jstring":
+        case "jclass":
+        case "jobject":
+          return "pointer";
+
+        case "jsize":
+          return "int";
+
+        case "jdouble":
+          return "double";
+        case "jfloat":
+          return "float";
+        case "jchar":
+          return "uint16";
+        case "jboolean":
+          return "char";
+        case "jlong":
+          return "int64";
+        case "jint":
+          return "int";
+        case "jshort":
+          return "int16";
+        case "jbyte":
+          return "char";
+
+        case "void":
+          return "void";
+
+        default:
+          throw new Error(`Unsupported JNI type for NativeFunction: ${jtype}`);
+      }
+    },
+    convertNativeFunctionArgumentToNativeCallbackArgument(t: NativeFunctionArgumentType): NativeCallbackArgumentType {
+      switch (t) {
+        case "...":
+          throw new Error("NativeCallback cannot be variadic ('...').");
+        case "void":
+        case "pointer":
+        case "size_t":
+        case "ssize_t":
+        case "int64":
+        case "uint64":
+        case "int":
+        case "uint":
+        case "long":
+        case "ulong":
+        case "char":
+        case "uchar":
+        case "float":
+        case "double":
+        case "int8":
+        case "uint8":
+        case "int16":
+        case "uint16":
+        case "int32":
+        case "uint32":
+        case "bool":
+          return t;
+        default:
+            throw new Error(`Unsupported JNI type for NativeCallback: ${t.toString()}`);
+      }
+    },
+    convertNativeJTypeToFridaNativeFunctionReturnType(jtype: string): NativeFunctionReturnType {
+      if (jtype.endsWith("*")) return "pointer";
+      if (jtype.includes("Array")) return "pointer";
+
+      switch (jtype) {
+        case "va_list":
+        case "jmethodID":
+        case "jfieldID":
+        case "jweak":
+        case "jthrowable":
+        case "jarray":
+        case "jstring":
+        case "jclass":
+        case "jobject":
+          return "pointer";
+
+        case "jsize":
+          return "int";
+
+        case "jdouble":
+          return "double";
+        case "jfloat":
+          return "float";
+        case "jchar":
+          return "uint16";
+        case "jboolean":
+          return "char";
+        case "jlong":
+          return "int64";
+        case "jint":
+          return "int";
+        case "jshort":
+          return "int16";
+        case "jbyte":
+          return "char";
+
+        case "void":
+          return "void";
+
+        default:
+          throw new Error(`Unsupported JNI return type for NativeFunction: ${jtype}`);
+      }
+    },
+    assertPtr(val: unknown, label: string): NativePointer {
+        if (!(val instanceof NativePointer)) {
+            throw new TypeError(`[${label}] Expected NativePointer, got ${typeof val}`);
+        }
+        return val;
+    },
+    assertNum(val: unknown, label: string): number {
+        if (typeof val !== 'number') {
+            throw new TypeError(`[${label}] Expected number, got ${typeof val}`);
+        }
+        return val;
+    },
+    isInvocationContext(context: InvocationContext | CallbackContext): context is InvocationContext {
+        return "threadId" in context;
+    },
+    isCallbackContext(context: InvocationContext | CallbackContext): context is CallbackContext {
+        return !Types.isInvocationContext(context);
+    },
+    assertIsNotVariadicType(
+        val: NativeFunctionArgumentType,
+        label?: string,
+    ): NativeCallbackArgumentType {
+        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+        if (val === "...") {
+            throw new Error(`${label === undefined ? "" : label + ": "}Cannot use variadic type in NativeCallback`);
+        }
+    
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        return val as NativeCallbackArgumentType;
+    },
+    assertHasNoVariadicTypes(
+        val: NativeFunctionArgumentType[],
+        label: string
+    ): NativeCallbackArgumentType[] {
+        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+        if (val.length > 0 && val[val.length - 1] === "...") {
+            throw new Error(`${label}: Cannot use variadic type in NativeCallback`);
+        }
+    
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+        return val as NativeCallbackArgumentType[];
     },
     convertJTypeToNativeJType (jtype: string): string {
         let result = "";

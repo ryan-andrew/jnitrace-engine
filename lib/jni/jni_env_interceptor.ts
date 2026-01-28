@@ -1,16 +1,17 @@
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import JNI_ENV_METHODS from "../data/jni_env.json";
 
-import { JNIThreadManager } from "./jni_thread_manager";
-import { JavaVMInterceptor } from "./java_vm_interceptor";
-import { JNIMethod } from "./jni_method";
+import type {JNIThreadManager} from "./jni_thread_manager";
+import type {JavaVMInterceptor} from "./java_vm_interceptor";
+import type {JNIMethod} from "./jni_method";
 
-import { ReferenceManager } from "../utils/reference_manager";
-import { Types } from "../utils/types";
-import { JavaMethod } from "../utils/java_method";
-import { Config } from "../utils/config";
+import type {ReferenceManager} from "../utils/reference_manager";
+import {Types} from "../utils/types";
+import {JavaMethod} from "../utils/java_method";
+import {Config} from "../utils/config";
 
-import { JNIInvocationContext } from "../";
-import { JNICallbackManager } from "../internal/jni_callback_manager";
+import type {JNIInvocationContext} from "../";
+import type {JNICallbackManager} from "../internal/jni_callback_manager";
 
 const TYPE_NAME_START = 0;
 const TYPE_NAME_END = -1;
@@ -30,7 +31,7 @@ abstract class JNIEnvInterceptor {
 
     protected methods: Map<string, JavaMethod>;
 
-    protected fastMethodLookup: Map<string, NativeCallback>;
+    protected fastMethodLookup: Map<string, NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]>>;
 
     protected vaArgsBacktraces: Map<number, NativePointer[]>;
 
@@ -48,7 +49,7 @@ abstract class JNIEnvInterceptor {
 
         this.shadowJNIEnv = NULL;
         this.methods = new Map<string, JavaMethod>();
-        this.fastMethodLookup = new Map<string, NativeCallback>();
+        this.fastMethodLookup = new Map<string, NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]>>();
         this.vaArgsBacktraces = new Map<number, NativePointer[]>();
     }
 
@@ -106,7 +107,8 @@ abstract class JNIEnvInterceptor {
         this.javaVMInterceptor = javaVMInterceptor;
     }
 
-    public createStubFunction (): NativeCallback {
+    // eslint-disable-next-line @typescript-eslint/class-methods-use-this
+    public createStubFunction (): NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]> {
         // eslint-disable-next-line @typescript-eslint/no-empty-function
         return new NativeCallback((): void => { }, "void", []);
     }
@@ -147,10 +149,11 @@ abstract class JNIEnvInterceptor {
         return text;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private addJavaArgsForJNIIntercept (
         method: JNIMethod,
-        args: NativeArgumentValue[]
-    ): NativeArgumentValue[] {
+        args: NativeFunctionArgumentValue[]
+    ): NativeFunctionArgumentValue[] {
         const LAST_INDEX = -1;
         const FIRST_INDEX = 0;
         const METHOD_ID_INDEX = 2;
@@ -167,9 +170,10 @@ abstract class JNIEnvInterceptor {
         }
 
         const clonedArgs = args.slice(COPY_ARRAY_INDEX);
-        const midPtr = args[methodIndex] as NativePointer;
+        const midPtr = Types.assertPtr(args[methodIndex], "midPtr");
 
-        if (!this.methods.has(midPtr.toString())) {
+        const javaMethod = this.methods.get(midPtr.toString());
+        if (javaMethod == undefined) {
             send({
                 type: "error",
                 message: "Failed to find corresponding method ID " +
@@ -178,10 +182,8 @@ abstract class JNIEnvInterceptor {
             return args.slice(COPY_ARRAY_INDEX);
         }
 
-        const javaMethod = this.methods.get(midPtr.toString()) as JavaMethod;
-
         const nativeJTypes = javaMethod.nativeParams;
-        const readPtr = args.slice(LAST_INDEX)[FIRST_INDEX] as NativePointer;
+        const readPtr = Types.assertPtr(args.slice(LAST_INDEX)[FIRST_INDEX], "readPtr");
 
         if (lastParamType === "va_list") {
             this.setUpVaListArgExtract(readPtr);
@@ -189,7 +191,7 @@ abstract class JNIEnvInterceptor {
 
         const UNION_SIZE = 8;
         for (let i = 0; i < nativeJTypes.length; i++) {
-            const type = Types.convertNativeJTypeToFridaType(nativeJTypes[i]);
+            const type = Types.convertNativeJTypeToFridaNativeFunctionArgumentType(nativeJTypes[i]);
             let val = undefined;
             if (lastParamType === "va_list") {
                 const currentPtr = this.extractVaListArgValue(javaMethod, i);
@@ -209,28 +211,28 @@ abstract class JNIEnvInterceptor {
     }
 
     private handleGetMethodResult (
-        args: NativeArgumentValue[],
-        ret: NativeReturnValue
+        args: NativeFunctionArgumentValue[],
+        ret: NativeFunctionReturnValue
     ): void {
         const SIG_INDEX = 3;
-        const signature = (args[SIG_INDEX] as NativePointer).readCString();
+        const signature = Types.assertPtr(args[SIG_INDEX], "sigPtr").readCString();
 
         if (signature !== null) {
             const methodSig = new JavaMethod(signature);
-            this.methods.set((ret as NativePointer).toString(), methodSig);
+            this.methods.set(Types.assertPtr(ret, "ret").toString(), methodSig);
         }
     }
 
     private handleGetJavaVM (
-        args: NativeArgumentValue[],
-        ret: NativeReturnValue
+        args: NativeFunctionArgumentValue[],
+        ret: NativeFunctionReturnValue
     ): void {
         if (this.javaVMInterceptor !== null) {
             const JNI_OK = 0;
             const JAVA_VM_INDEX = 1;
 
             if (ret === JNI_OK) {
-                const javaVMPtr = args[JAVA_VM_INDEX] as NativePointer;
+                const javaVMPtr = Types.assertPtr(args[JAVA_VM_INDEX], "javaVMPtr");
                 this.threads.setJavaVM(javaVMPtr.readPointer());
 
                 let javaVM = undefined;
@@ -245,15 +247,15 @@ abstract class JNIEnvInterceptor {
         }
     }
 
-    private handleRegisterNatives (args: NativeArgumentValue[]): void {
+    private handleRegisterNatives (args: NativeFunctionArgumentValue[]): void {
         const METHOD_INDEX = 2;
         const SIZE_INDEX = 3;
         const JNI_METHOD_SIZE = 3;
 
         const self = this;
 
-        const methods = args[METHOD_INDEX] as NativePointer;
-        const size = args[SIZE_INDEX] as number;
+        const methods = Types.assertPtr(args[METHOD_INDEX], "methods");
+        const size = Types.assertNum(args[SIZE_INDEX], "size");
         for (let i = 0; i < size * JNI_METHOD_SIZE; i += JNI_METHOD_SIZE) {
             const methodsPtr = methods;
 
@@ -278,14 +280,14 @@ abstract class JNIEnvInterceptor {
             }
 
             Interceptor.attach(addr, {
-                onEnter (args: NativeArgumentValue[]): void {
+                onEnter (iArgs: InvocationArguments): void {
                     const check = name + sig;
                     const config = Config.getInstance();
                     const EMPTY_ARRAY_LEN = 0;
 
                     if (config.includeExport.length > EMPTY_ARRAY_LEN) {
                         const included = config.includeExport.filter(
-                            (i: string): boolean => check.includes(i)
+                            (j: string): boolean => check.includes(j)
                         );
                         if (included.length === EMPTY_ARRAY_LEN) {
                             return;
@@ -302,21 +304,22 @@ abstract class JNIEnvInterceptor {
 
                     if (!self.threads.hasJNIEnv(this.threadId)) {
                         self.threads.setJNIEnv(
-                            this.threadId, args[JNI_ENV_INDEX] as NativePointer
+                            this.threadId, iArgs[JNI_ENV_INDEX]
                         );
                     }
-                    args[JNI_ENV_INDEX] = self.shadowJNIEnv;
+                    iArgs[JNI_ENV_INDEX] = self.shadowJNIEnv;
                 }
             });
         }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-private-class-members
     private handleJNIInterceptResult (
         method: JNIMethod,
-        args: NativeArgumentValue[],
-        ret: NativeReturnValue
+        args: NativeFunctionArgumentValue[],
+        ret: NativeFunctionReturnValue
     ): void {
-        const name = method.name;
+        const {name} = method;
 
         if (["GetMethodID", "GetStaticMethodID"].includes(name)) {
             this.handleGetMethodResult(args, ret);
@@ -330,32 +333,43 @@ abstract class JNIEnvInterceptor {
     private createJNIIntercept (
         id: number,
         methodPtr: NativePointer
-    ): NativeCallback {
+    ): NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]> {
         const self = this;
         const METHOD_ID_INDEX = 2;
         const method = JNI_ENV_METHODS[id];
         const config = Config.getInstance();
 
         const paramTypes = method.args.map(
-            (t: string): string => Types.convertNativeJTypeToFridaType(t)
+            (t: string): NativeFunctionArgumentType => Types.convertNativeJTypeToFridaNativeFunctionArgumentType(t)
         );
-        const retType = Types.convertNativeJTypeToFridaType(method.ret);
+        const retType = Types.convertNativeJTypeToFridaNativeFunctionReturnType(method.ret);
 
-        const nativeFunction = new NativeFunction(methodPtr, retType, paramTypes);
+        const nativeFunction = new NativeFunction(
+            methodPtr,
+            retType,
+            paramTypes
+        ) as NativeFunction<
+            NativeFunctionReturnValue,
+            NativeFunctionArgumentValue[]
+        >;
+        const callbackArgs = Types.assertHasNoVariadicTypes(paramTypes, "paramTypes")
         const nativeCallback = new NativeCallback(function (
-            this: InvocationContext
-        ): NativeReturnValue {
-            const threadId = this.threadId;
-            const jniEnv = self.threads.getJNIEnv(threadId);
-            const args: NativeArgumentValue[] = [].slice.call(arguments);
+            this: InvocationContext | CallbackContext,
+            ...args: NativeCallbackArgumentValue[]
+        ): NativeCallbackReturnValue {
+            if (!Types.isInvocationContext(this)) {
+                throw new Error("This is not an invocation context somehow")
+            }
+            const jniEnv = self.threads.getJNIEnv(this.threadId);
+            const mutableArgs = Array.from(args);
 
-            args[JNI_ENV_INDEX] = jniEnv;
+            mutableArgs[JNI_ENV_INDEX] = jniEnv;
 
-            const clonedArgs = self.addJavaArgsForJNIIntercept(method, args);
+            const clonedArgs = self.addJavaArgsForJNIIntercept(method, mutableArgs);
 
             const ctx: JNIInvocationContext = {
                 jniAddress: methodPtr,
-                threadId: threadId,
+                threadId: this.threadId,
                 methodDef: method,
             };
 
@@ -365,103 +379,128 @@ abstract class JNIEnvInterceptor {
                 ctx.backtrace = Thread.backtrace(this.context, Backtracer.FUZZY);
             }
 
-            if (args.length !== clonedArgs.length) {
+            if (mutableArgs.length !== clonedArgs.length) {
                 // eslint-disable-next-line @typescript-eslint/no-base-to-string
-                const key = args[METHOD_ID_INDEX].toString();
+                const key = mutableArgs[METHOD_ID_INDEX]?.toString();
+                if (key == undefined) {
+                    throw new Error("Method ID somehow not found")
+                }
                 ctx.javaMethod = self.methods.get(key);
             }
 
             self.callbackManager.doBeforeCallback(method.name, ctx, clonedArgs);
 
-            let ret = nativeFunction.apply(null, args);
+            // eslint-disable-next-line prefer-spread
+            let ret = nativeFunction.apply(null, mutableArgs);
 
             ret = self.callbackManager.doAfterCallback(method.name, ctx, ret);
 
-            self.handleJNIInterceptResult(method, args, ret);
+            self.handleJNIInterceptResult(method, mutableArgs, ret);
 
             return ret;
-        } as NativeCallbackImplementation, retType, paramTypes);
+        }, retType, callbackArgs);
 
         this.references.add(nativeCallback);
 
         return nativeCallback;
     }
 
+    // eslint-disable-next-line @typescript-eslint/max-params,@typescript-eslint/no-unused-private-class-members
     private createJNIVarArgMainCallback (
         method: JNIMethod,
         methodPtr: NativePointer,
-        initialparamTypes: string[],
-        mainParamTypes: string[],
-        retType: string
-    ): NativeCallback {
+        initialparamTypes: NativeFunctionArgumentType[],
+        mainParamTypes: NativeCallbackArgumentType[],
+        retType: NativeFunctionReturnType
+    ): NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]> {
         const self = this;
 
-        const mainCallback = new NativeCallback(function (
-            this: InvocationContext
-        ): NativeReturnValue {
+        return new NativeCallback(function (
+            this: InvocationContext | CallbackContext,
+            ...args: NativeCallbackArgumentValue[]
+        ): NativeCallbackReturnValue {
             const METHOD_ID_INDEX = 2;
-            const threadId = this.threadId;
-            const args: NativeArgumentValue[] = [].slice.call(arguments);
-            const jniEnv = self.threads.getJNIEnv(threadId);
+            if (!Types.isInvocationContext(this)) {
+                throw new Error("This is not an invocation context somehow")
+            }
+            const mutableArgs = Array.from(args);
+            const jniEnv = self.threads.getJNIEnv(this.threadId);
             // eslint-disable-next-line @typescript-eslint/no-base-to-string
-            const key = args[METHOD_ID_INDEX].toString();
+            const key = mutableArgs[METHOD_ID_INDEX]?.toString();
+            if (key == undefined) {
+                throw new Error("Method ID somehow not found")
+            }
             const jmethod = self.methods.get(key);
 
-            args[JNI_ENV_INDEX] = jniEnv;
+            mutableArgs[JNI_ENV_INDEX] = jniEnv;
 
             const ctx: JNIInvocationContext = {
                 backtrace: self.vaArgsBacktraces.get(this.threadId),
                 jniAddress: methodPtr,
-                threadId: threadId,
+                threadId: this.threadId,
                 methodDef: method,
                 javaMethod: jmethod
             };
 
-            self.callbackManager.doBeforeCallback(method.name, ctx, args);
+            self.callbackManager.doBeforeCallback(method.name, ctx, mutableArgs);
 
-            let ret = new NativeFunction(methodPtr,
+            const nativeFunction = new NativeFunction(
+                methodPtr,
                 retType,
-                initialparamTypes).apply(null, args);
+                initialparamTypes
+            ) as NativeFunction<NativeFunctionReturnValue, NativeFunctionArgumentValue[]>;
+            // eslint-disable-next-line prefer-spread
+            let ret = nativeFunction.apply(null, mutableArgs);
 
             ret = self.callbackManager.doAfterCallback(method.name, ctx, ret);
 
             self.vaArgsBacktraces.delete(this.threadId);
 
             return ret;
-        } as NativeCallbackImplementation, retType, mainParamTypes);
-
-        return mainCallback;
+        }, retType, mainParamTypes);
     }
 
     private createJNIVarArgInitialCallback (
         method: JNIMethod,
         methodPtr: NativePointer
-    ): NativeCallback {
+    ): NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]> {
         const self = this;
 
-        const vaArgsCallback = new NativeCallback(function (): NativeReturnValue {
+        return new NativeCallback(function (
+            this: InvocationContext | CallbackContext,
+            ...args: NativeCallbackArgumentValue[]
+        ): NativePointerValue {
             const METHOD_ID_INDEX = 2;
             // eslint-disable-next-line @typescript-eslint/no-base-to-string
-            const methodId = (arguments[METHOD_ID_INDEX] as NativeArgumentValue).toString();
-            const javaMethod = self.methods.get(methodId) as JavaMethod;
+            const methodId = args[METHOD_ID_INDEX]?.toString();
+            if (methodId == undefined) {
+                throw new Error("methodId was somehow undefined")
+            }
+            const javaMethod = self.methods.get(methodId);
+            if (javaMethod == undefined) {
+                throw new Error("Method ID not found in cache")
+            }
 
-            if (self.fastMethodLookup.has(methodId)) {
-                return self.fastMethodLookup.get(methodId) as NativeReturnValue;
+            const fastMethod = self.fastMethodLookup.get(methodId);
+            if (fastMethod !== undefined) {
+                return fastMethod;
             }
 
             const originalParams = method.args
                 .slice(TYPE_NAME_START, TYPE_NAME_END)
-                .map((t: string): string => Types.convertNativeJTypeToFridaType(t));
-            const callbackParams = originalParams.slice(COPY_ARRAY_INDEX);
+                .map((t) => Types.convertNativeJTypeToFridaNativeFunctionArgumentType(t));
+
+            const callbackParams = Types.assertHasNoVariadicTypes(originalParams.slice(COPY_ARRAY_INDEX), "");
 
             originalParams.push("...");
 
-            javaMethod.fridaParams.forEach((p: string): void => {
-                callbackParams.push(p === "float" ? "double" : p);
-                originalParams.push(p);
+            javaMethod.fridaParams.forEach((p: NativeFunctionArgumentType): void => {
+                const param = p === "float" ? "double" : p;
+                callbackParams.push(Types.assertIsNotVariadicType(param, "param"));
+                originalParams.push(param as NativeFunctionArgumentType);
             });
 
-            const retType = Types.convertNativeJTypeToFridaType(method.ret);
+            const retType = Types.convertNativeJTypeToFridaNativeFunctionReturnType(method.ret);
 
             const mainCallback = self.createJNIVarArgMainCallback(
                 method, methodPtr, originalParams, callbackParams, retType
@@ -472,16 +511,15 @@ abstract class JNIEnvInterceptor {
 
             return mainCallback;
         }, "pointer", ["pointer", "pointer", "pointer"]);
-
-        return vaArgsCallback;
     }
 
+    // eslint-disable-next-line @typescript-eslint/class-methods-use-this
     private readValue (
         currentPtr: NativePointer,
-        type: string,
+        type: NativeFunctionArgumentType,
         extend?: boolean
-    ): NativeArgumentValue {
-        let val: NativeArgumentValue = NULL;
+    ): NativeFunctionArgumentValue {
+        let val: NativeFunctionArgumentValue = NULL;
 
         if (type === "char") {
             val = currentPtr.readS8();
@@ -511,7 +549,7 @@ abstract class JNIEnvInterceptor {
     protected abstract buildVaArgParserShellcode(
         text: NativePointer,
         data: NativePointer,
-        parser: NativeCallback
+        parser: NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]>
     ): void;
 
     protected abstract setUpVaListArgExtract(vaList: NativePointer): void;

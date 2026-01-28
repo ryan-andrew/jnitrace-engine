@@ -1,9 +1,9 @@
 import { JNIEnvInterceptor } from "../jni_env_interceptor";
-import { JNIThreadManager } from "../jni_thread_manager";
+import type { JNIThreadManager } from "../jni_thread_manager";
 
-import { ReferenceManager } from "../../utils/reference_manager";
-import { JavaMethod } from "../../utils/java_method";
-import { JNICallbackManager } from "../../internal/jni_callback_manager";
+import type { ReferenceManager } from "../../utils/reference_manager";
+import type { JavaMethod } from "../../utils/java_method";
+import type { JNICallbackManager } from "../../internal/jni_callback_manager";
 
 class JNIEnvInterceptorARM64 extends JNIEnvInterceptor {
     private stack: NativePointer;
@@ -39,7 +39,8 @@ class JNIEnvInterceptorARM64 extends JNIEnvInterceptor {
         this.vrOffsIndex = 0;
     }
 
-    public createStubFunction (): NativePointer {
+    // eslint-disable-next-line @typescript-eslint/class-methods-use-this
+    public createStubFunction (): NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]> {
         const stub = Memory.alloc(Process.pageSize);
 
         Memory.patchCode(stub, Process.pageSize, (code: NativePointer): void => {
@@ -54,10 +55,11 @@ class JNIEnvInterceptorARM64 extends JNIEnvInterceptor {
         return stub;
     }
 
+    // eslint-disable-next-line @typescript-eslint/class-methods-use-this
     protected buildVaArgParserShellcode (
         text: NativePointer,
         _: NativePointer,
-        parser: NativeCallback
+        parser: NativeCallback<NativeCallbackReturnType, NativeCallbackArgumentType[]>
     ): void {
         const DATA_OFFSET = 0x400;
         const BITS_IN_BYTE = 8;

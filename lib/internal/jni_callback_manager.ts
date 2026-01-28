@@ -1,6 +1,6 @@
-import { JNIInvocationCallback } from "..";
+import type { JNIInvocationCallback } from "..";
 import { JNIInvocationListener } from "..";
-import { JNIInvocationContext } from "..";
+import type { JNIInvocationContext } from "..";
 import { JNINativeReturnValue } from "..";
 
 
@@ -29,7 +29,7 @@ class JNICallbackManager {
     public doBeforeCallback (
         method: string,
         ctx: JNIInvocationContext, 
-        args: NativeArgumentValue[]
+        args: NativeFunctionArgumentValue[]
     ): void {
         if (this.callbacks.has(method)) {
             const cb = this.callbacks.get(method);
@@ -42,8 +42,8 @@ class JNICallbackManager {
     public doAfterCallback (
         method: string,
         ctx: JNIInvocationContext,
-        retval: NativeReturnValue
-    ): NativeReturnValue {
+        retval: NativeFunctionReturnValue
+    ): NativeFunctionReturnValue {
         if (this.callbacks.has(method)) {
             const cb = this.callbacks.get(method);
             if (cb?.onLeave !== undefined) {
